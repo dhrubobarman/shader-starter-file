@@ -1,67 +1,83 @@
-import { useCamera, useComposer, useControls, useRenderer, useScene, useStats } from './init.js';
+import {
+  useCamera,
+  useComposer,
+  useControls,
+  useRenderer,
+  useScene,
+  useStats,
+} from "./init.js";
 
 // animation params
-const localData = {
-    timestamp: 0,
-    timeDiff: 0,
-    frame: null,
+const localData: {
+  timestamp: number;
+  timeDiff: number;
+  frame: XRFrame | null;
+} = {
+  timestamp: 0,
+  timeDiff: 0,
+  frame: null,
 };
 const localFrameOpts = {
-    data: localData,
+  data: localData,
 };
 
-const frameEvent = new MessageEvent('tick', localFrameOpts);
+const frameEvent = new MessageEvent("tick", localFrameOpts);
+
+export type TickEvent = typeof frameEvent;
 
 class TickManager extends EventTarget {
-    constructor({ timestamp, timeDiff, frame } = localData) {
-        super();
+  timestamp: number;
+  timeDiff: number;
+  frame: null | XRFrame;
+  constructor({ timestamp, timeDiff, frame } = localData) {
+    super();
 
-        this.timestamp = timestamp;
-        this.timeDiff = timeDiff;
-        this.frame = frame;
+    this.timestamp = timestamp;
+    this.timeDiff = timeDiff;
+    this.frame = frame;
+  }
+  startLoop() {
+    const composer = useComposer();
+    const renderer = useRenderer();
+    const scene = useScene();
+    const camera = useCamera();
+    const controls = useControls();
+    const stats = useStats();
+
+    if (!renderer) {
+      throw new Error("Updating Frame Failed : Uninitialized Renderer");
     }
-    startLoop() {
-        const composer = useComposer();
-        const renderer = useRenderer();
-        const scene = useScene();
-        const camera = useCamera();
-        const controls = useControls();
-        const stats = useStats();
 
-        if (!renderer) {
-            throw new Error('Updating Frame Failed : Uninitialized Renderer');
-        }
+    let lastTimestamp = performance.now();
 
-        let lastTimestamp = performance.now();
+    const animate = (timestamp: number, frame: XRFrame) => {
+      this.timestamp = timestamp ?? performance.now();
+      this.timeDiff = timestamp - lastTimestamp;
 
-        const animate = (timestamp, frame) => {
-            this.timestamp = timestamp ?? performance.now();
-            this.timeDiff = timestamp - lastTimestamp;
+      const timeDiffCapped = Math.min(Math.max(this.timeDiff, 0), 100);
 
-            const timeDiffCapped = Math.min(Math.max(this.timeDiff, 0), 100);
+      // performance tracker start
 
-            // performance tracker start
+      controls.update();
 
-            controls.update();
+      composer.render();
+      // renderer.render(scene, camera);
 
-            composer.render();
-            // renderer.render(scene, camera);
+      this.tick(timestamp, timeDiffCapped, frame);
 
-            this.tick(timestamp, timeDiffCapped, frame);
+      stats.update();
 
-            stats.update();
+      // performance tracker end
+    };
 
-            // performance tracker end
-        };
-
-        renderer.setAnimationLoop(animate);
-    }
-    tick(timestamp, timeDiff, frame) {
-        localData.timestamp = timestamp;
-        localData.frame = frame;
-        localData.timeDiff = timeDiff;
-        this.dispatchEvent(frameEvent);
-    }
+    renderer.setAnimationLoop(animate);
+  }
+  tick(timestamp: number, timeDiff: number, frame: XRFrame) {
+    localData.timestamp = timestamp;
+    localData.frame = frame;
+    localData.timeDiff = timeDiff;
+    this.dispatchEvent(frameEvent);
+  }
 }
 
 export default TickManager;
