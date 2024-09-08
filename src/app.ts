@@ -13,8 +13,8 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { BlendShader } from "three/examples/jsm/shaders/BlendShader.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 
-import vertexShader from "./shaders/vertex.glsl";
-import fragmentShader from "./shaders/fragment.glsl";
+import vertexShader from "./shaders/vertex.glsl?raw";
+import fragmentShader from "./shaders/fragment.glsl?raw";
 
 const startApp = () => {
   const scene = useScene();
@@ -34,7 +34,14 @@ const startApp = () => {
 
   // meshes
   const geometry = new THREE.IcosahedronGeometry(1, 5);
-  const material = new THREE.ShaderMaterial();
+  const material = new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader,
+    uniforms: {
+      uTime: { value: 0 },
+    },
+    wireframe: true,
+  });
 
   const ico = new THREE.Mesh(geometry, material);
   scene.add(ico);
